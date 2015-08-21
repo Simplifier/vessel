@@ -1,14 +1,14 @@
 import Keyboard
 import Window
 import Text
-import Text (centered, monospace, fromString)
+import Text exposing (monospace, fromString)
 import Signal
-import Signal ((<~), (~), sampleOn, foldp)
-import Time (Time, fps, inSeconds)
-import List (length, foldl, filter, map, concatMap, any, (::))
-import Graphics.Element (image, container, middle, Element)
-import Graphics.Collage (collage, rect, ngon, filled, move, rotate, toForm)
-import Color (lightRed, white, darkRed)
+import Signal exposing ((<~), (~), sampleOn, foldp)
+import Time exposing (Time, fps, inSeconds)
+import List exposing (length, foldl, filter, map, concatMap, any, (::))
+import Graphics.Element exposing (centered, image, container, middle, Element)
+import Graphics.Collage exposing (collage, rect, ngon, filled, move, rotate, toForm)
+import Color exposing (lightRed, white, darkRed)
 
 -- Important game properties
 shipStartY = -200
@@ -151,30 +151,31 @@ autoShip : Tunnel -> Ship -> Ship
 autoShip t s = { s | x <- towards t.x s.x }
 
 stepDead : Input -> Game -> Game
-stepDead {dir,delta,space} game = if space
-                          then { defaultGame | state <- Playing }
-                          else
-                            if (game.cnt > game.score + 200)
-                            then { defaultGame | state <- Waiting }
-                            else { game | debri <- stepDebri delta game.cnt game.ship game.debri
-                                      , ship <- hideShip game.ship
-                                      , cnt <- (\n -> n + 1) game.cnt }
+stepDead {dir,delta,space} game = 
+    if space
+    then { defaultGame | state <- Playing }
+    else
+      if (game.cnt > game.score + 200)
+      then { defaultGame | state <- Waiting }
+      else { game | debri <- stepDebri delta game.cnt game.ship game.debri
+                , ship <- hideShip game.ship
+                , cnt <- game.cnt + 1 }
 
 stepWaiting : Input -> Game -> Game
 stepWaiting {dir,delta,space} game = if space
                           then { defaultGame | state <- Playing }
                           else { game | pieces <- stepPiece delta game
-                                      , cnt <- (\n -> n + 1) game.cnt
+                                      , cnt <- game.cnt + 1
                                       , ship <- autoShip game.t game.ship
                                       , t <- updateTunnel game}
 
 stepGame : Input -> Game -> Game
 stepGame {dir,delta,space} game =
   { game | pieces <- stepPiece delta game
-         , cnt <- (\n -> n + 1) game.cnt
+         , cnt <- game.cnt + 1
          , t <- updateTunnel game
          , ship <- stepShip delta dir game.ship
-         , score <- (\n -> n + 1) game.score
+         , score <- game.score + 1
          , state <- updateState game }
 
 stepStart input game = case game.state of
@@ -201,7 +202,7 @@ displayText game = case game.state of
                         _       -> "Space to start then arrows"
 
 displayVessel game x y =
-    if game.state == Playing then [] else [ toForm (image 396 68 "vessel.png") |> move (0, 100) ]
+    if game.state == Playing then [] else [ toForm (image 396 68 "http://slawrence.github.io/vessel/vessel.png") |> move (0, 100) ]
 
 display (w,h) game =
   container w h middle

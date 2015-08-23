@@ -1,14 +1,13 @@
 import Keyboard
 import Window
-import Text
 import Text exposing (monospace, fromString)
-import Signal
 import Signal exposing ((<~), (~), sampleOn, foldp)
 import Time exposing (Time, fps, inSeconds)
 import List exposing (length, foldl, filter, map, concatMap, any, (::))
 import Graphics.Element exposing (centered, image, container, middle, Element)
 import Graphics.Collage exposing (collage, rect, ngon, filled, move, rotate, toForm)
 import Color exposing (lightRed, white, darkRed)
+import Debug exposing (log)
 
 -- Important game properties
 shipStartY = -200
@@ -92,18 +91,25 @@ stepObj t ({x,y,vx,vy} as obj) =
 
 stepShip : Time -> Int -> Ship -> Ship
 stepShip t dir ship =
-  let ship1 = stepObj t { ship | vx <- toFloat dir * 360 }
-  in ship1
+  stepObj t { ship | vx <- toFloat dir * 360 }
 
 filterPiece piece = piece.y > -400
+
+addPiece : Game -> List Piece
+addPiece game =
+  let nx = game.t.x
+      ny = game.t.y
+      speed = game.t.speed
+      nwidth = game.t.width
+      h = (800 / (toFloat (length game.pieces))) + 50
+  in
+      { x=nx, y=ny, vx=0, vy=-speed, width=nwidth, height=h } :: game.pieces
 
 stepPiece : Time -> Game -> List Piece
 stepPiece t game =
   addPiece game
    |> map (stepObj t)
    |> filter (filterPiece)
-
-stepDebri t cnt ship debri = map (stepObj t) (addDebri ship cnt debri)
 
 addD sx sy n =
     let vx = sin (degrees (toFloat n)) * 150
@@ -117,17 +123,7 @@ addDebri ship cnt debri =
      then (map (addD ship.x ship.y) (foldl (\n a -> if n % 12 == 0 then [n] ++ a else a ) [] [0..360])) ++ debri
      else map (\d -> { d | deg <- (d.deg + 20) % 360 } ) debri
 
-addPiece : Game -> List Piece
-addPiece game =
-  let nx = game.t.x
-      ny = game.t.y
-      speed = game.t.speed
-      nwidth = game.t.width
-      h = (800 / (toFloat (length game.pieces))) + 50
-  in
-      if game.cnt % 1 == 0
-      then { x=nx, y=ny, vx=0, vy=-speed, width=nwidth, height=h } :: game.pieces
-      else game.pieces
+stepDebri t cnt ship debri = map (stepObj t) (addDebri ship cnt debri)
 
 withinN offset px sx = (sx > px - offset) && (sx < px + offset)
 
@@ -198,11 +194,11 @@ drawShip ship = [ ngon 3 10 |> filled white
 txt f = centered (monospace (Text.height 15 (Text.color white (fromString (f)))))
 displayText game = case game.state of
                         Playing -> ""
-                        Dead    -> (if game.state == Dead then "" ++ (toString game.score) else "")
+                        Dead    -> toString game.score
                         _       -> "Space to start then arrows"
 
 displayVessel game x y =
-    if game.state == Playing then [] else [ toForm (image 396 68 "http://slawrence.github.io/vessel/vessel.png") |> move (0, 100) ]
+    if game.state == Playing then [] else [ toForm (image 396 68 "http://slawrence.github.io/vessel/vessel.png") |> move (x, y) ]
 
 display (w,h) game =
   container w h middle
@@ -210,7 +206,7 @@ display (w,h) game =
       ([rect 500 500 |> filled darkRed ] ++
         concatMap drawPiece game.pieces ++
         drawShip game.ship ++
-        displayVessel game 0 -120 ++
+        displayVessel game 0 100 ++
         concatMap drawDebri game.debri ++
         [toForm (txt (displayText game))]))
 
